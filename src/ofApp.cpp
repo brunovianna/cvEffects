@@ -19,10 +19,11 @@ void ofApp::setup(){
   	gui->addSpacer();
     gui->addLabelButton("load video", false);
     gui->addLabelButton("save video", false);
-    gui->addLabelButton("export frames", false);
     gui->addLabelButton("save one frame", false);
   	gui->addLabelButton("restart", false);
   	gui->addSpacer();
+  	gui->addToggle("export frames", false);
+    gui->addSpacer();
   	gui->addLabel("background", OFX_UI_FONT_SMALL);
   	vector<string> backgroundOptions;
     backgroundOptions.push_back("black");
@@ -95,7 +96,7 @@ void ofApp::setup(){
     lastPointsOpticalFlow = std::vector<cv::Point2f>(MAX_FEATURES);
     goodFeatureDetector = cv::GoodFeaturesToTrackDetector (MAX_FEATURES);
 
-    surfFinder = new cv::detail::SurfFeaturesFinder();
+    siftFinder = new cv::SIFT();
     //surfFeatures = new cv::detail::ImageFeatures();
 }
 
@@ -185,6 +186,23 @@ void ofApp::draw(){
             break;
 
 
+
+        }
+
+        if (exportFramesOn) {
+                string frameString;
+                ostringstream convert;
+
+                convert << setfill('0') << setw (4) << frameNumber << ".jpg";
+                frameString = convert.str();
+
+                ofImage screen;
+                screen.grabScreen(moviePosX,moviePosY,scaledWidth,scaledHeight);
+                screen.saveImage(savePath+frameString);
+
+                frameNumber++;
+                mMovie.nextFrame();
+                mMovie.update();
 
         }
 
@@ -314,9 +332,16 @@ void ofApp::guiEvent(ofxUIEventArgs &e)
 
         ofxUIButton *labelbutton = e.getButton();
 
-        if (labelbutton->getValue())
+        if (labelbutton->getValue()) {
             exportFrames();
-
+            mMovie.setPaused(true);
+            mMovie.nextFrame();
+            mMovie.update();
+            exportFramesOn = true;
+        } else {
+            mMovie.setPaused(false);
+            exportFramesOn = false;
+        }
     } else if(e.getName() == "effects chooser")    {
 
         ofxUIDropDownList *ddlist = (ofxUIDropDownList *) e.widget;
@@ -479,51 +504,15 @@ void ofApp::exportMovie() {
 
 void ofApp::exportFrames() {
 
-        string savePath = "exported_frames_"+ofGetTimestampString()+"/";
+        savePath = "exported_frames_"+ofGetTimestampString()+"/";
 
         ofDirectory dir;
 
         dir.createDirectory (savePath, false);
 
-        int frameNumber = 0;
-
-        //keyPressed(effect);//resets the effect
+        frameNumber = 0;
 
         mMovie.setPaused(true);
-        mMovie.nextFrame();
-        mMovie.update();
-        while (mMovie.getCurrentFrame()< mMovie.getTotalNumFrames()) {
-            if (mMovie.isFrameNew()) {
-
-                cv::Mat frame(movieWidth,movieHeight,CV_8UC3,mMovie.getPixels());
-                cv::Mat resized;
-                resized = myResize (frame, scaleFloat);
-
-                //draw();
-
-                string frameString;
-                ostringstream convert;
-
-                convert << setfill('0') << setw (4) << frameNumber << ".jpg";
-                frameString = convert.str();
-
-                ofImage screen;
-                screen.grabScreen(moviePosX,moviePosY,scaledWidth,scaledHeight);
-                screen.saveImage(savePath+frameString);
-
-                mMovie.nextFrame();
-                mMovie.update();
-                cout << mMovie.getCurrentFrame() << "\n";
-                //frameNumber = mMovie.getCurrentFrame();
-                frameNumber++;
-            } else {
-                mMovie.update();
-                //ofSleepMillis(1);
-            }
-
-        }
-
-
 
 }
 
@@ -869,7 +858,9 @@ void ofApp::effectFeatureLines(cv::Mat color_img ) {
 
 void ofApp::effectSurfWaves (cv::Mat rzd) {
 
-    (*surfFinder)(rzd, surfFeatures);
+    cv::Mat grey_img;
+    cv::cvtColor(rzd, grey_img, CV_RGB2GRAY);
+    (*siftFinder)(grey_img, cv::noArray(), siftFeatures, cv::noArray());
 
 
 /*
@@ -959,9 +950,9 @@ void ofApp::effectSurfWaves (cv::Mat rzd) {
 
         ofBeginShape();
 
-        for (unsigned int i=0;((i<surfFeatures.keypoints.size())&&(i<20));i++) {
+        for (unsigned int i=0;((i<siftFeatures.size())&&(i<20));i++) {
 
-            ofCurveVertex(surfFeatures.keypoints[i].pt.x, surfFeatures.keypoints[i].pt.y);
+            ofCurveVertex(siftFeatures[i].pt.x, siftFeatures[i].pt.y);
 
 
         }
@@ -969,8 +960,6 @@ void ofApp::effectSurfWaves (cv::Mat rzd) {
         ofFill();
 
         ofPopMatrix();
-
-    surfFinder->collectGarbage();
 
 
 }

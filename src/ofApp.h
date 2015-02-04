@@ -91,6 +91,10 @@ class ofApp : public ofBaseApp{
         void exportMovie();
         void exportFrames();
 
+        bool exportFramesOn = false;
+        string savePath;
+        int frameNumber;
+
         cv::Mat myResize(cv::Mat src, float s);
         cv::Mat resized;
 
@@ -122,11 +126,8 @@ class ofApp : public ofBaseApp{
         bool firstFrameOpticalFlow = true;
         int MAX_FEATURES = 500;
 
-        cv::detail::SurfFeaturesFinder *surfFinder;
-        cv::detail::ImageFeatures surfFeatures, lastSurfFeatures;
-        vector< vector<int> > surfBezier;
-        bool firstSurf = true;
-        bool firstSurfMatch = false;
+        cv::SIFT *siftFinder;
+        vector <cv::KeyPoint> siftFeatures;
 
 
         bool findInVector(vector<string> haystack, string needle);
