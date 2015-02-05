@@ -116,7 +116,9 @@ class ofApp : public ofBaseApp{
         ofImage effectBgExtract (cv::Mat color_img) ;
         void effectGoodOpticalFlow(cv::Mat color_img);
         void effectTrackOpticalFlow(cv::Mat color_img);
+
         void effectFeatureLines(cv::Mat color_img);
+        ofImage effectGradientMotion(cv::Mat rsz);
 
         cv::GoodFeaturesToTrackDetector goodFeatureDetector;
         std::vector<cv::Point2f> lastPointsOpticalFlow;
